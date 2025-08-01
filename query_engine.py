@@ -1,13 +1,14 @@
 """
-Professional RAG Pipeline - Query Engine Module
-===============================================
+Professional RAG Pipeline - Query Engine Module (FIXED)
+=======================================================
 
 A comprehensive query engine for Retrieval-Augmented Generation (RAG) applications
 with advanced filtering, search optimization, and response generation.
+Now uses centralized configuration from config.py.
 
 Author: Mustafa Said Oğuztürk
-Date: 2025-07-30
-Version: 2.0.0
+Date: 2025-08-01
+Version: 2.1.0 - Uses Centralized Configuration
 """
 
 import re
@@ -18,43 +19,24 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_ollama import ChatOllama
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 
-
-class QueryEngineConfig:
-    """Configuration class for query engine parameters."""
-    
-    # Database configuration
-    CHROMA_PATH = "chroma"
-    EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
-    EMBEDDING_DEVICE = 'cpu'
-    
-    # LLM configuration
-    LLM_MODEL = "llama3.2"
-    LLM_TEMPERATURE = 0.1
-    
-    # Search configuration
-    DEFAULT_K = 5
-    MAX_TOC_RESULTS = 1
-    
-    # Prompt template
-    PROMPT_TEMPLATE = """
-Answer the question based only on the following context:
-{context}
-- -
-Answer the question based on the above context: {question}
-"""
+# Import centralized configuration
+from config import RAGPipelineConfig
 
 
 class TableOfContentsFilter:
     """Fast Table of Contents filtering for query results."""
     
-    @staticmethod
-    def is_toc_quick(content: str) -> bool:
+    def __init__(self, config: RAGPipelineConfig = None):
+        """Initialize with configuration."""
+        self.config = config or RAGPipelineConfig()
+    
+    def is_toc_quick(self, content: str) -> bool:
         """
         Ultra-fast ToC detection with minimal processing.
-        Only catches the most obvious ToC patterns.
+        Uses patterns from centralized config.
         
         Args:
             content: Text content to analyze
@@ -64,9 +46,10 @@ class TableOfContentsFilter:
         """
         content_lower = content.lower()
         
-        # Quick check for explicit ToC headers (first 50 chars only)
-        if 'table of contents' in content_lower[:50]:
-            return True
+        # Quick check for explicit ToC headers using config patterns
+        for pattern in self.config.TOC_PATTERNS:
+            if pattern.lower() in content_lower[:50]:
+                return True
         
         # Check for heavy dot patterns (most reliable ToC indicator)
         if '......' in content and len(content) < 200:
@@ -74,23 +57,25 @@ class TableOfContentsFilter:
         
         return False
     
-    @staticmethod
-    def filter_toc_fast(results: List[Tuple], max_toc: int = 1) -> List[Tuple]:
+    def filter_toc_fast(self, results: List[Tuple], max_toc: int = None) -> List[Tuple]:
         """
         Fast ToC filtering with minimal processing.
         
         Args:
             results: List of (document, score) tuples
-            max_toc: Maximum number of ToC results to keep
+            max_toc: Maximum number of ToC results to keep (from config if None)
             
         Returns:
             List[Tuple]: Filtered results
         """
+        if max_toc is None:
+            max_toc = self.config.MAX_TOC_RESULTS
+            
         non_toc = []
         toc = []
         
         for doc, score in results:
-            if TableOfContentsFilter.is_toc_quick(doc.page_content):
+            if self.is_toc_quick(doc.page_content):
                 toc.append((doc, score))
             else:
                 non_toc.append((doc, score))
@@ -99,7 +84,7 @@ class TableOfContentsFilter:
         if len(non_toc) >= 3:
             return non_toc[:5]  # Top 5 non-ToC
         elif len(non_toc) >= 1:
-            return non_toc + toc[:max_toc]  # Add 1 ToC if needed
+            return non_toc + toc[:max_toc]  # Add ToC if needed
         else:
             return results[:5]  # Fallback to original if all ToC
 
@@ -107,8 +92,9 @@ class TableOfContentsFilter:
 class DatabaseAnalyzer:
     """Analyzes database contents and provides file/directory information."""
     
-    def __init__(self, chroma_path: str, embeddings):
-        """Initialize database analyzer."""
+    def __init__(self, chroma_path: str, embeddings, config: RAGPipelineConfig = None):
+        """Initialize database analyzer with config."""
+        self.config = config or RAGPipelineConfig()
         self.chroma_path = chroma_path
         self.embeddings = embeddings
         self._db = None
@@ -176,22 +162,14 @@ class DatabaseAnalyzer:
 class ChromaDBFilterBuilder:
     """Builds ChromaDB native filters for document and directory filtering."""
     
-    def __init__(self, database_analyzer: DatabaseAnalyzer):
-        """Initialize filter builder with database analyzer."""
+    def __init__(self, database_analyzer: DatabaseAnalyzer, config: RAGPipelineConfig = None):
+        """Initialize filter builder with database analyzer and config."""
+        self.config = config or RAGPipelineConfig()
         self.database_analyzer = database_analyzer
     
     def build_filter(self, document_names: Optional[List[str]] = None, 
                     directory_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """
-        Build ChromaDB native filter using supported operators.
-        
-        Args:
-            document_names: List of document names to filter by
-            directory_path: Directory path to filter by
-            
-        Returns:
-            Optional[Dict]: ChromaDB filter or None if no filtering needed
-        """
+        """Build ChromaDB native filter using supported operators."""
         db_info = self.database_analyzer.get_database_info()
         available_files = db_info['files']
         
@@ -255,16 +233,7 @@ class ChromaDBFilterBuilder:
     
     def test_filter_building(self, document: Optional[str] = None, 
                            directory: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Test filter building for debugging purposes.
-        
-        Args:
-            document: Document name to test
-            directory: Directory path to test
-            
-        Returns:
-            Dict: Filter building results and debug information
-        """
+        """Test filter building for debugging purposes."""
         print(f"🧪 Testing filter building:")
         print(f"   Document: {document}")
         print(f"   Directory: {directory}")
@@ -292,11 +261,17 @@ class ChromaDBFilterBuilder:
 class ResponseGenerator:
     """Handles LLM initialization and response generation."""
     
-    def __init__(self, model_name: str = "llama3.2", temperature: float = 0.1):
-        """Initialize response generator with LLM configuration."""
+    def __init__(self, model_name: str = None, temperature: float = None, config: RAGPipelineConfig = None):
+        """Initialize response generator with LLM configuration from config."""
+        self.config = config or RAGPipelineConfig()
+        
+        # Use config values if parameters not provided
+        model_name = model_name or self.config.CURRENT_LLM["model"]
+        temperature = temperature if temperature is not None else self.config.CURRENT_LLM["temp"]
+        
         self.llm = ChatOllama(model=model_name, temperature=temperature)
         self.prompt_template = ChatPromptTemplate.from_template(
-            QueryEngineConfig.PROMPT_TEMPLATE
+            self.config.PROMPT_TEMPLATE
         )
     
     def generate_response(self, context: str, question: str) -> Any:
@@ -335,24 +310,27 @@ class RAGQueryEngine:
     """Main query engine that orchestrates the search and response generation."""
     
     def __init__(self, chroma_path: str = None, embedding_model: str = None, 
-                 llm_model: str = None, llm_temperature: float = None):
-        """Initialize RAG query engine."""
-        self.config = QueryEngineConfig()
+                 llm_model: str = None, llm_temperature: float = None, config: RAGPipelineConfig = None):
+        """Initialize RAG query engine with centralized configuration."""
+        self.config = config or RAGPipelineConfig()
+        
+        # Use config values if parameters not provided
         self.chroma_path = chroma_path or self.config.CHROMA_PATH
         
         # Initialize components
         self.embeddings = self._initialize_embeddings(embedding_model)
-        self.database_analyzer = DatabaseAnalyzer(self.chroma_path, self.embeddings)
-        self.filter_builder = ChromaDBFilterBuilder(self.database_analyzer)
+        self.database_analyzer = DatabaseAnalyzer(self.chroma_path, self.embeddings, self.config)
+        self.filter_builder = ChromaDBFilterBuilder(self.database_analyzer, self.config)
         self.response_generator = ResponseGenerator(
-            model_name=llm_model or self.config.LLM_MODEL,
-            temperature=llm_temperature or self.config.LLM_TEMPERATURE
+            model_name=llm_model,
+            temperature=llm_temperature,
+            config=self.config
         )
-        self.toc_filter = TableOfContentsFilter()
+        self.toc_filter = TableOfContentsFilter(self.config)
     
     def _initialize_embeddings(self, embedding_model: Optional[str] = None):
-        """Initialize embedding function."""
-        model_name = embedding_model or self.config.EMBEDDING_MODEL
+        """Initialize embedding function using config."""
+        model_name = embedding_model or self.config.CURRENT_EMBEDDING_MODEL
         return HuggingFaceEmbeddings(
             model_name=model_name,
             model_kwargs={'device': self.config.EMBEDDING_DEVICE},
@@ -362,21 +340,24 @@ class RAGQueryEngine:
     def search_documents(self, query: str, k: int = None,
                         document_names: Optional[List[str]] = None,
                         directory_path: Optional[str] = None,
-                        enable_toc_filter: bool = True) -> Tuple[str, Any]:
+                        enable_toc_filter: bool = None) -> Tuple[str, Any]:
         """
         Core search function with filtering and response generation.
         
         Args:
             query: Search query
-            k: Number of results to retrieve
+            k: Number of results to retrieve (uses config default if None)
             document_names: List of document names to filter by
             directory_path: Directory path to filter by
-            enable_toc_filter: Whether to filter Table of Contents
+            enable_toc_filter: Whether to filter Table of Contents (uses config if None)
             
         Returns:
             Tuple[str, Any]: Formatted response and raw LLM response
         """
+        # Use config values if not provided
         k = k or self.config.DEFAULT_K
+        if enable_toc_filter is None:
+            enable_toc_filter = self.config.ENABLE_TOC_FILTERING
         
         # Build ChromaDB filter
         where_filter = self.filter_builder.build_filter(document_names, directory_path)
@@ -394,7 +375,7 @@ class RAGQueryEngine:
         
         # Apply ToC filtering if enabled
         if enable_toc_filter:
-            results = self.toc_filter.filter_toc_fast(results, max_toc=self.config.MAX_TOC_RESULTS)
+            results = self.toc_filter.filter_toc_fast(results)
         
         if not results:
             filtered_msg = "No documents match after filtering."
@@ -418,7 +399,7 @@ class RAGQueryEngine:
             query: Search query
             document: Single document name to search in
             directory: Directory path to search in
-            k: Number of results to retrieve
+            k: Number of results to retrieve (uses config default if None)
             
         Returns:
             LLM response
@@ -446,7 +427,7 @@ class RAGQueryEngine:
         Args:
             query: Search query
             *document_names: Variable number of document names
-            k: Number of results to retrieve
+            k: Number of results to retrieve (uses config default if None)
             
         Returns:
             LLM response
@@ -478,22 +459,27 @@ class RAGQueryEngine:
         return self.filter_builder.test_filter_building(document, directory)
 
 
-# Convenience functions for easy usage
+# Convenience functions for easy usage (now use centralized config)
 def create_query_engine(chroma_path: str = None, embedding_model: str = None,
-                       llm_model: str = None, llm_temperature: float = None) -> RAGQueryEngine:
+                       llm_model: str = None, llm_temperature: float = None, 
+                       config: RAGPipelineConfig = None) -> RAGQueryEngine:
     """Create and return a configured query engine."""
+    if config is None:
+        config = RAGPipelineConfig()
+    
     return RAGQueryEngine(
         chroma_path=chroma_path,
         embedding_model=embedding_model,
         llm_model=llm_model,
-        llm_temperature=llm_temperature
+        llm_temperature=llm_temperature,
+        config=config
     )
 
 
 def quick_search(query: str, document: Optional[str] = None, 
-                directory: Optional[str] = None, k: int = 5) -> Any:
+                directory: Optional[str] = None, k: int = None) -> Any:
     """
-    Quick search function with default configuration.
+    Quick search function with centralized configuration.
     
     Examples:
         quick_search("radar test")                                    # No filter
@@ -501,39 +487,48 @@ def quick_search(query: str, document: Optional[str] = None,
         quick_search("radar test", directory="/kaggle/input/srs")     # One directory
         quick_search("radar test", document="doc.pdf", directory="/kaggle/input")  # Both
     """
-    engine = create_query_engine()
+    config = RAGPipelineConfig()
+    engine = create_query_engine(config=config)
     return engine.quick_search(query, document, directory, k)
 
 
-def search_multiple_docs(query: str, *document_names: str, k: int = 5) -> Any:
+def search_multiple_docs(query: str, *document_names: str, k: int = None) -> Any:
     """
     Search in multiple documents.
     
     Example:
         search_multiple_docs("radar test", "doc1.pdf", "doc2.docx", "doc3.pdf")
     """
-    engine = create_query_engine()
+    config = RAGPipelineConfig()
+    engine = create_query_engine(config=config)
     return engine.search_multiple_documents(query, *document_names, k=k)
 
 
 def show_database_info() -> None:
     """Show database overview."""
-    engine = create_query_engine()
+    config = RAGPipelineConfig()
+    engine = create_query_engine(config=config)
     engine.show_database_info()
 
 
 def test_filter(document: Optional[str] = None, directory: Optional[str] = None) -> Dict[str, Any]:
     """Test filter building for debugging."""
-    engine = create_query_engine()
+    config = RAGPipelineConfig()
+    engine = create_query_engine(config=config)
     return engine.test_filter(document, directory)
 
 
 if __name__ == "__main__":
-    # Example usage
-    print("🚀 RAG Query Engine Ready!")
+    # Example usage with centralized configuration
+    print("🚀 RAG Query Engine Ready! (Using Centralized Config)")
+    print("\n🔧 Current Configuration:")
+    config = RAGPipelineConfig()
+    config.print_config()
+    
     print("\n📖 Usage Examples:")
     print("1. quick_search('What is radar testing?')")
     print("2. quick_search('system requirements', document='SRS.pdf')")
     print("3. quick_search('test procedures', directory='/kaggle/input/tests')")
     print("4. search_multiple_docs('performance metrics', 'doc1.pdf', 'doc2.docx')")
     print("5. show_database_info()")
+    print("\n💡 All settings are managed from config.py - no more duplicate configuration!")

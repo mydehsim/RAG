@@ -4,10 +4,11 @@ Professional RAG Pipeline - Document Processing Module (FIXED)
 
 A comprehensive document processing and vector database management system
 for Retrieval-Augmented Generation (RAG) applications.
+Now uses centralized configuration from config.py.
 
 Author: Mustafa Said Oğuztürk
-Date: 2025-07-30
-Version: 2.0.1 - Fixed DocumentConverter initialization
+Date: 2025-08-01
+Version: 2.1.0 - Uses Centralized Configuration
 """
 
 import os
@@ -24,10 +25,13 @@ import numpy as np
 # LangChain imports
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from langchain_community.vectorstores import Chroma
-from langchain_community.vectorstores.utils import filter_complex_metadata
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+# from langchain_chroma import filter_complex_metadata
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_docling import DoclingLoader
+
+# Import centralized configuration
+from config import RAGPipelineConfig
 
 # Docling imports for advanced document processing
 try:
@@ -45,36 +49,13 @@ warnings.filterwarnings('ignore')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-class DocumentProcessorConfig:
-    """Configuration class for document processing parameters."""
-    
-    # File paths
-    CHROMA_PATH = "chroma"
-    DATA_PATH = r"C:\Users\stajyer1\Desktop\Mustafa_Said_Oguzturk\data"  # Updated from config
-    
-    # Embedding configuration
-    EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
-    EMBEDDING_DEVICE = 'cpu'
-    
-    # Text splitting configuration
-    CHUNK_SIZE = 800
-    CHUNK_OVERLAP = 400
-    
-    # Supported file extensions
-    SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.doc', '.md', '.html', '.htm', '.rtf', '.odt', '.xlsx', '.xls'}
-    
-    # Table of Contents filtering patterns
-    TOC_PATTERNS = [
-        'table of contents', 'contents', 'içindekiler', 'İÇİNDEKİLER',
-        'tablolar', 'şekiller', 'TABLOLAR', 'ŞEKİLLER'
-    ]
-
-
 class DocumentConverter:
     """Handles document conversion and loading with optimized settings."""
     
-    def __init__(self):
-        """Initialize document converter with fallback for different docling versions."""
+    def __init__(self, config: RAGPipelineConfig = None):
+        """Initialize document converter with config."""
+        self.config = config or RAGPipelineConfig()
+        
         if DOCLING_AVAILABLE:
             try:
                 self.pipeline_options = self._setup_pipeline_options()
@@ -88,12 +69,13 @@ class DocumentConverter:
             self.doc_converter = None
     
     def _setup_pipeline_options(self) -> 'PdfPipelineOptions':
-        """Setup optimized PDF pipeline options."""
+        """Setup optimized PDF pipeline options using config."""
         try:
-            pipeline_options = PdfPipelineOptions(do_table_structure=True)
-            pipeline_options.do_ocr = False
-            pipeline_options.table_structure_options.do_cell_matching = True
-            pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
+            pipeline_options = PdfPipelineOptions(do_table_structure=self.config.ENABLE_TABLE_EXTRACTION)
+            pipeline_options.do_ocr = self.config.ENABLE_OCR
+            if self.config.ENABLE_TABLE_EXTRACTION:
+                pipeline_options.table_structure_options.do_cell_matching = True
+                pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
             return pipeline_options
         except Exception as e:
             print(f"Warning: Could not setup pipeline options: {e}")
@@ -146,10 +128,13 @@ class DocumentConverter:
 class TableOfContentsFilter:
     """Handles detection and filtering of Table of Contents content."""
     
-    @staticmethod
-    def is_toc_content(content: str, metadata: Optional[Dict] = None) -> bool:
+    def __init__(self, config: RAGPipelineConfig = None):
+        """Initialize with config."""
+        self.config = config or RAGPipelineConfig()
+    
+    def is_toc_content(self, content: str, metadata: Optional[Dict] = None) -> bool:
         """
-        Comprehensive ToC detection for database filtering.
+        Comprehensive ToC detection for database filtering using config patterns.
         
         Args:
             content: Text content to analyze
@@ -161,9 +146,9 @@ class TableOfContentsFilter:
         content_clean = content.strip()
         content_lower = content_clean.lower()
         
-        # Check for explicit ToC headers
-        for pattern in DocumentProcessorConfig.TOC_PATTERNS:
-            if pattern in content_lower:
+        # Check for explicit ToC headers using config patterns
+        for pattern in self.config.TOC_PATTERNS:
+            if pattern.lower() in content_lower:
                 return True
         
         # Check structural patterns
@@ -189,12 +174,11 @@ class TableOfContentsFilter:
         
         return False
     
-    @staticmethod
-    def filter_toc_chunks(chunks: List[Document]) -> List[Document]:
+    def filter_toc_chunks(self, chunks: List[Document]) -> List[Document]:
         """Filter out Table of Contents chunks from document list."""
         return [
             chunk for chunk in chunks 
-            if not TableOfContentsFilter.is_toc_content(chunk.page_content, chunk.metadata)
+            if not self.is_toc_content(chunk.page_content, chunk.metadata)
         ]
 
 
@@ -241,14 +225,18 @@ class PageNumberExtractor:
 class ChunkProcessor:
     """Handles text splitting and chunk ID assignment."""
     
-    def __init__(self, chunk_size: int = 800, chunk_overlap: int = 400):
-        """Initialize chunk processor with splitting parameters."""
+    def __init__(self, config: RAGPipelineConfig = None):
+        """Initialize chunk processor with config parameters."""
+        self.config = config or RAGPipelineConfig()
+        
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+            chunk_size=self.config.CHUNK_SIZE,
+            chunk_overlap=self.config.CHUNK_OVERLAP,
             length_function=len,
             is_separator_regex=False,
         )
+        
+        self.toc_filter = TableOfContentsFilter(self.config)
     
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """Split documents into chunks."""
@@ -256,22 +244,26 @@ class ChunkProcessor:
             return []
         return self.text_splitter.split_documents(documents)
     
-    def assign_chunk_ids(self, chunks: List[Document], filter_toc: bool = True) -> List[Document]:
+    def assign_chunk_ids(self, chunks: List[Document], filter_toc: bool = None) -> List[Document]:
         """
         Assign unique IDs to chunks and optionally filter ToC content.
         
         Args:
             chunks: List of document chunks
-            filter_toc: Whether to filter Table of Contents
+            filter_toc: Whether to filter Table of Contents (uses config if None)
             
         Returns:
             List[Document]: Processed chunks with IDs
         """
         if not chunks:
             return []
+        
+        # Use config setting if not specified
+        if filter_toc is None:
+            filter_toc = self.config.ENABLE_TOC_FILTERING
             
         if filter_toc:
-            chunks = TableOfContentsFilter.filter_toc_chunks(chunks)
+            chunks = self.toc_filter.filter_toc_chunks(chunks)
         
         # Group chunks by source file
         chunks_by_file = self._group_chunks_by_file(chunks)
@@ -329,6 +321,10 @@ class ChunkProcessor:
 class FileManager:
     """Handles file system operations and metadata tracking."""
     
+    def __init__(self, config: RAGPipelineConfig = None):
+        """Initialize with config."""
+        self.config = config or RAGPipelineConfig()
+    
     @staticmethod
     def calculate_file_hash(file_path: str) -> Optional[str]:
         """Calculate MD5 hash of file for change detection."""
@@ -351,9 +347,8 @@ class FileManager:
             print(f"Error getting modification time for {file_path}: {e}")
             return None
     
-    @staticmethod
-    def get_supported_files(directory: str) -> Dict[str, Dict[str, Any]]:
-        """Get list of supported document files with metadata."""
+    def get_supported_files(self, directory: str) -> Dict[str, Dict[str, Any]]:
+        """Get list of supported document files with metadata using config extensions."""
         files_info = {}
         
         if not os.path.exists(directory):
@@ -365,9 +360,9 @@ class FileManager:
                 file_path = os.path.join(root, filename)
                 _, ext = os.path.splitext(filename.lower())
                 
-                if ext in DocumentProcessorConfig.SUPPORTED_EXTENSIONS:
-                    file_hash = FileManager.calculate_file_hash(file_path)
-                    mod_time = FileManager.get_file_modification_time(file_path)
+                if ext in self.config.SUPPORTED_EXTENSIONS:
+                    file_hash = self.calculate_file_hash(file_path)
+                    mod_time = self.get_file_modification_time(file_path)
                     files_info[file_path] = {
                         "hash": file_hash,
                         "mod_time": mod_time
@@ -379,8 +374,9 @@ class FileManager:
 class DatabaseManager:
     """Manages ChromaDB operations and file tracking."""
     
-    def __init__(self, chroma_path: str, embeddings):
-        """Initialize database manager."""
+    def __init__(self, chroma_path: str, embeddings, config: RAGPipelineConfig = None):
+        """Initialize database manager with config."""
+        self.config = config or RAGPipelineConfig()
         self.chroma_path = chroma_path
         self.embeddings = embeddings
         self.db = None
@@ -477,29 +473,32 @@ class DatabaseManager:
 class RAGDocumentProcessor:
     """Main class that orchestrates the document processing pipeline."""
     
-    def __init__(self, data_path: str = None, chroma_path: str = None):
-        """Initialize the RAG document processor."""
-        self.config = DocumentProcessorConfig()
+    def __init__(self, data_path: str = None, chroma_path: str = None, config: RAGPipelineConfig = None):
+        """Initialize the RAG document processor with centralized configuration."""
+        self.config = config or RAGPipelineConfig()
+        
+        # Use config values if parameters not provided
         self.data_path = data_path or self.config.DATA_PATH
         self.chroma_path = chroma_path or self.config.CHROMA_PATH
         
-        # Initialize components
+        # Initialize components with config
         self.embeddings = self._initialize_embeddings()
-        self.document_converter = DocumentConverter()
-        self.chunk_processor = ChunkProcessor(
-            chunk_size=self.config.CHUNK_SIZE,
-            chunk_overlap=self.config.CHUNK_OVERLAP
-        )
-        self.file_manager = FileManager()
-        self.database_manager = DatabaseManager(self.chroma_path, self.embeddings)
+        self.document_converter = DocumentConverter(self.config)
+        self.chunk_processor = ChunkProcessor(self.config)
+        self.file_manager = FileManager(self.config)
+        self.database_manager = DatabaseManager(self.chroma_path, self.embeddings, self.config)
         
         print(f"📁 Data path: {self.data_path}")
         print(f"💾 Chroma path: {self.chroma_path}")
+        
+        if self.config.ENABLE_COMPREHENSIVE_LOGGING:
+            print("🔧 Configuration used:")
+            self.config.print_config()
     
     def _initialize_embeddings(self):
-        """Initialize embedding function."""
+        """Initialize embedding function using config."""
         return HuggingFaceEmbeddings(
-            model_name=self.config.EMBEDDING_MODEL,
+            model_name=self.config.CURRENT_EMBEDDING_MODEL,
             model_kwargs={'device': self.config.EMBEDDING_DEVICE},
             encode_kwargs={'normalize_embeddings': True}
         )
@@ -527,22 +526,26 @@ class RAGDocumentProcessor:
                 "file_mod_time": file_info["mod_time"]
             })
         
-        # Assign chunk IDs and filter ToC
-        processed_chunks = self.chunk_processor.assign_chunk_ids(chunks, filter_toc=True)
+        # Assign chunk IDs and filter ToC (uses config settings)
+        processed_chunks = self.chunk_processor.assign_chunk_ids(chunks)
         
         print(f"    Generated {len(processed_chunks)} chunks")
         return processed_chunks
     
-    def update_database(self, comprehensive_toc_filter: bool = True) -> Dict[str, int]:
+    def update_database(self, comprehensive_toc_filter: bool = None) -> Dict[str, int]:
         """
         Update database with smart file change detection.
         
         Args:
-            comprehensive_toc_filter: Whether to apply comprehensive ToC filtering
+            comprehensive_toc_filter: Whether to apply comprehensive ToC filtering (uses config if None)
             
         Returns:
             Dict[str, int]: Statistics about the update operation
         """
+        # Use config setting if not specified
+        if comprehensive_toc_filter is None:
+            comprehensive_toc_filter = self.config.ENABLE_TOC_FILTERING
+            
         print(f"🔄 Updating database from: {self.data_path}")
         print(f"📋 Comprehensive ToC filtering: {comprehensive_toc_filter}")
         
@@ -620,9 +623,14 @@ class RAGDocumentProcessor:
         self._print_update_summary(stats)
         return stats
     
-    def build_initial_database(self, comprehensive_toc_filter: bool = True) -> None:
-        """Build database from scratch."""
+    def build_initial_database(self, comprehensive_toc_filter: bool = None) -> None:
+        """Build database from scratch using config settings."""
+        # Use config setting if not specified
+        if comprehensive_toc_filter is None:
+            comprehensive_toc_filter = self.config.ENABLE_TOC_FILTERING
+            
         print(f"🏗️ Building initial database from: {self.data_path}")
+        print(f"📋 Comprehensive ToC filtering: {comprehensive_toc_filter}")
         
         files_info = self.file_manager.get_supported_files(self.data_path)
         print(f"📁 Found {len(files_info)} supported files")
@@ -682,25 +690,38 @@ class RAGDocumentProcessor:
         print(f"="*60)
 
 
-# Main execution functions
-def main_update_database(data_path: str = None, chroma_path: str = None):
-    """Main function to update existing database."""
-    processor = RAGDocumentProcessor(data_path, chroma_path)
-    return processor.update_database(comprehensive_toc_filter=True)
+# Main execution functions using centralized config
+def main_update_database(data_path: str = None, chroma_path: str = None, config: RAGPipelineConfig = None):
+    """Main function to update existing database using centralized config."""
+    if config is None:
+        config = RAGPipelineConfig()
+    
+    processor = RAGDocumentProcessor(data_path, chroma_path, config)
+    return processor.update_database()
 
 
-def main_build_initial_database(data_path: str = None, chroma_path: str = None):
-    """Main function to build database from scratch."""
-    processor = RAGDocumentProcessor(data_path, chroma_path)
-    processor.build_initial_database(comprehensive_toc_filter=True)
+def main_build_initial_database(data_path: str = None, chroma_path: str = None, config: RAGPipelineConfig = None):
+    """Main function to build database from scratch using centralized config."""
+    if config is None:
+        config = RAGPipelineConfig()
+    
+    processor = RAGDocumentProcessor(data_path, chroma_path, config)
+    processor.build_initial_database()
 
 
 if __name__ == "__main__":
-    # Example usage
+    # Example usage with centralized configuration
     print("🚀 Starting RAG Document Processing Pipeline...")
+    print("🔧 Using Centralized Configuration from config.py")
+    
+    # Show current configuration
+    config = RAGPipelineConfig()
+    config.print_config()
     
     # For regular updates (recommended for existing databases)
+    print("\n📄 Running database update...")
     main_update_database()
     
     # For initial database creation (uncomment if building from scratch)
+    # print("\n🏗️ Building initial database...")
     # main_build_initial_database()
