@@ -1,0 +1,214 @@
+{
+    "common": {
+        "actions": {
+            "cancel": "İptal",
+            "confirm": "Onayla",
+            "continue": "Devam Et",
+            "goBack": "Geri Dön",
+            "reset": "Sıfırla",
+            "submit": "Gönder"
+        },
+        "status": {
+            "loading": "Yükleniyor...",
+            "error": {
+                "default": "Bir hata oluştu",
+                "serverConnection": "Sunucuya ulaşılamadı"
+            }
+        }
+    },
+    "auth": {
+        "login": {
+            "title": "Uygulamaya erişmek için giriş yapın",
+            "form": {
+                "email": {
+                    "label": "E-posta adresi",
+                    "required": "e-posta zorunlu bir alandır"
+                },
+                "password": {
+                    "label": "Şifre",
+                    "required": "şifre zorunlu bir alandır"
+                },
+                "actions": {
+                    "signin": "Giriş Yap"
+                },
+                "alternativeText": {
+                    "or": "VEYA"
+                }
+            },
+            "errors": {
+                "default": "Giriş yapılamadı",
+                "signin": "Farklı bir hesapla giriş yapmayı deneyin",
+                "oauthSignin": "Farklı bir hesapla giriş yapmayı deneyin",
+                "redirectUriMismatch": "Yönlendirme URI'si, oauth uygulama yapılandırmasıyla eşleşmiyor",
+                "oauthCallback": "Farklı bir hesapla giriş yapmayı deneyin",
+                "oauthCreateAccount": "Farklı bir hesapla giriş yapmayı deneyin",
+                "emailCreateAccount": "Farklı bir hesapla giriş yapmayı deneyin",
+                "callback": "Farklı bir hesapla giriş yapmayı deneyin",
+                "oauthAccountNotLinked": "Kimliğinizi doğrulamak için, başlangıçta kullandığınız hesapla giriş yapın",
+                "emailSignin": "E-posta gönderilemedi",
+                "emailVerify": "Lütfen e-postanızı doğrulayın, yeni bir e-posta gönderildi",
+                "credentialsSignin": "Giriş başarısız. Girdiğiniz bilgilerin doğru olduğunu kontrol edin",
+                "sessionRequired": "Bu sayfaya erişmek için lütfen giriş yapın"
+            }
+        },
+        "provider": {
+            "continue": "{{provider}} ile devam et"
+        }
+    },
+    "chat": {
+        "input": {
+            "placeholder": "Mesajınızı buraya yazın...",
+            "actions": {
+                "send": "Mesajı gönder",
+                "stop": "Görevi Durdur",
+                "attachFiles": "Dosya ekle"
+            }
+        },
+        "speech": {
+            "start": "Kaydı başlat",
+            "stop": "Kaydı durdur",
+            "connecting": "Bağlanılıyor"
+        },
+        "fileUpload": {
+            "dragDrop": "Dosyaları buraya sürükleyip bırakın",
+            "browse": "Dosyalara Gözat",
+            "sizeLimit": "Limit:",
+            "errors": {
+                "failed": "Yükleme başarısız oldu",
+                "cancelled": "Yüklemesi iptal edildi:"
+            }
+        },
+        "messages": {
+            "status": {
+                "using": "Kullanılıyor",
+                "used": "Kullanıldı"
+            },
+            "actions": {
+                "copy": {
+                    "button": "Panoya kopyala",
+                    "success": "Kopyalandı!"
+                }
+            },
+            "feedback": {
+                "positive": "Yardımcı",
+                "negative": "Yardımcı değil",
+                "edit": "Geri bildirimi düzenle",
+                "dialog": {
+                    "title": "Yorum ekle",
+                    "submit": "Geri bildirimi gönder"
+                },
+                "status": {
+                    "updating": "Güncelleniyor",
+                    "updated": "Geri bildirim güncellendi"
+                }
+            }
+        },
+        "history": {
+            "title": "Son Girdiler",
+            "empty": "Buralar boş...",
+            "show": "Geçmişi göster"
+        },
+        "settings": {
+            "title": "Ayarlar paneli"
+        },
+        "watermark": "Büyük Dil Modelleri (LLM'ler) hata yapabilir. Önemli bilgileri kontrol edin."
+    },
+    "threadHistory": {
+        "sidebar": {
+            "title": "Geçmiş Sohbetler",
+            "filters": {
+                "search": "Ara",
+                "placeholder": "Konuşmalarda ara..."
+            },
+            "timeframes": {
+                "today": "Bugün",
+                "yesterday": "Dün",
+                "previous7days": "Son 7 gün",
+                "previous30days": "Son 30 gün"
+            },
+            "empty": "Sohbet bulunamadı",
+            "actions": {
+                "close": "Kenar çubuğunu kapat",
+                "open": "Kenar çubuğunu aç"
+            }
+        },
+        "thread": {
+            "untitled": "Başlıksız Konuşma",
+            "menu": {
+                "rename": "Yeniden Adlandır",
+                "delete": "Sil"
+            },
+            "actions": {
+                "delete": {
+                    "title": "Silmeyi onayla",
+                    "description": "Bu, sohbeti, mesajlarını ve öğelerini silecektir. Bu işlem geri alınamaz.",
+                    "success": "Sohbet silindi",
+                    "inProgress": "Sohbet siliniyor"
+                },
+                "rename": {
+                    "title": "Sohbeti Yeniden Adlandır",
+                    "description": "Bu sohbet için yeni bir ad girin",
+                    "form": {
+                        "name": {
+                            "label": "Ad",
+                            "placeholder": "Yeni adı girin"
+                        }
+                    },
+                    "success": "Sohbet yeniden adlandırıldı!",
+                    "inProgress": "Sohbet yeniden adlandırılıyor"
+                }
+            }
+        }
+    },
+    "navigation": {
+        "header": {
+            "chat": "Sohbet",
+            "readme": "ReadMe",
+            "theme": {
+                "light": "Açık Tema",
+                "dark": "Koyu Tema",
+                "system": "Sistemi Takip Et"
+            }
+        },
+        "newChat": {
+            "button": "Yeni Sohbet",
+            "dialog": {
+                "title": "Yeni Sohbet Oluştur",
+                "description": "Bu, mevcut sohbet geçmişinizi temizleyecektir. Devam etmek istediğinizden emin misiniz?",
+                "tooltip": "Yeni Sohbet"
+            }
+        },
+        "user": {
+            "menu": {
+                "settings": "Ayarlar",
+                "settingsKey": "A",
+                "apiKeys": "API Anahtarları",
+                "logout": "Çıkış Yap"
+            }
+        }
+    },
+    "apiKeys": {
+        "title": "Gerekli API Anahtarları",
+        "description": "Bu uygulamayı kullanmak için aşağıdaki API anahtarları gereklidir. Anahtarlar cihazınızın yerel depolama alanında saklanır.",
+        "success": {
+            "saved": "Başarıyla kaydedildi"
+        }
+    },
+    "alerts": {
+        "info": "Bilgi",
+        "note": "Not",
+        "tip": "İpucu",
+        "important": "Önemli",
+        "warning": "Uyarı",
+        "caution": "Dikkat",
+        "debug": "Hata Ayıklama",
+        "example": "Örnek",
+        "success": "Başarı",
+        "help": "Yardım",
+        "idea": "Fikir",
+        "pending": "Beklemede",
+        "security": "Güvenlik",
+        "beta": "Beta",
+        "best-practice": "En İyi Uygulama"
+    }
+}
