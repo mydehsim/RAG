@@ -1,409 +1,371 @@
-# Professional RAG Pipeline v2.0.0
+# Professional RAG Pipeline v2.2.0
 
-A comprehensive, production-ready Retrieval-Augmented Generation (RAG) pipeline with advanced document processing, smart filtering, and optimized search capabilities.
+A production-ready Retrieval-Augmented Generation (RAG) system with advanced document processing, intelligent search capabilities, and a modern web interface. Features centralized configuration management and comprehensive multilingual support.
 
-## 🚀 Features
+## 🌟 Key Features
 
-### Document Processing
-- **Multi-format Support**: PDF, DOCX, DOC, TXT, MD, HTML, XLSX, XLS
-- **Advanced PDF Processing**: Table extraction, OCR support, page-aware chunking
-- **Smart Chunking**: Overlapping chunks with metadata preservation
-- **Table of Contents Filtering**: Automatic detection and filtering of ToC content
-- **File Change Detection**: Incremental updates with hash-based change detection
+### Web Interface in Action
+<div align="center">
+  <img src="assets/UI.gif" alt="RAG Pipeline Demo" width="800">
+  <p><i>RAG Pipeline searching through documents with real-time results</i></p>
+</div>
 
-### Search & Retrieval
-- **Semantic Search**: High-quality multilingual embeddings
-- **Advanced Filtering**: Document-specific and directory-based filtering
-- **Smart Result Ranking**: ToC filtering and relevance optimization
-- **Multi-document Search**: Search across multiple documents simultaneously
+### Core Capabilities
+- **🎯 Centralized Configuration**: Single source of truth in `config.py` for all settings
+- **📄 Multi-format Support**: PDF, DOCX, TXT, MD, HTML, XLSX, XLS, CSV
+- **🌍 Multilingual**: Optimized for Turkish and English documents
+- **🤖 Local LLM Integration**: Ollama integration with multiple model support
+- **💾 Vector Database**: ChromaDB for efficient semantic search
+- **🔍 Smart Search**: Advanced filtering by document, directory, or multiple files
 
-### LLM Integration
-- **Ollama Integration**: Local LLM execution with multiple model support
-- **Context-aware Responses**: Proper citation and source tracking
-- **Configurable Models**: Easy switching between different LLM models
+### Advanced Features
+- **📊 Intelligent Processing**
+  - Smart chunking with overlap for context preservation
+  - Table extraction from documents
+  - OCR support for scanned documents
+  - Automatic Table of Contents (ToC) filtering
+  
+- **🔄 Smart Updates**
+  - Hash-based file change detection
+  - Incremental database updates
+  - Automatic handling of new, modified, and deleted files
+  
+- **🎨 Modern Web Interface**
+  - Chainlit-based responsive UI
+  - Real-time search with typing animations
+  - Clickable file hyperlinks in sources
+  - Comprehensive settings panel
 
 ## 📁 Project Structure
 
 ```
 rag_pipeline/
-├── document_processor.py    # Document processing and database management
-├── query_engine.py          # Search and response generation
-├── config.py            # Main orchestration and configuration
-└── README.md                    # This file
-```
-
-## 🛠️ Installation
-
-### Prerequisites
-- Python 3.8+
-- CUDA-compatible GPU (recommended)
-- Minimum 8GB RAM
-- 10GB+ free disk space
-
-### Required Packages
-```bash
-pip install python-dotenv==1.0.1
-pip install langchain==0.3.24
-pip install langchain-community==0.3.14
-pip install langchain-openai==0.1.8
-pip install langchain-core==0.3.29
-pip install langchain-ollama==0.2.2
-pip install unstructured==0.14.4
-pip install onnxruntime==1.17.1
-pip install chromadb
-pip install openai==1.31.1
-pip install tiktoken==0.7.0
-pip install pypdf==5.4.0
-pip install pydantic==2.9.2
-pip install langchain-docling
+├── config.py                  # 🎯 Centralized configuration management
+├── document_processing.py     # 📄 Document processing and database operations
+├── query_engine.py           # 🔍 Search and response generation (v2.2.0)
+├── app.py                    # 🎨 Chainlit web interface (v1.2)
+├── demo.py                   # 🚀 Interactive demonstration script
+├── README.md                 # 📖 This file
+└── requirements.txt          # 📦 Package dependencies
 ```
 
 ## 🚀 Quick Start
 
-### 1. Basic Setup
-```python
-from config import setup_rag_system, build_database, search, show_documents
+### Prerequisites
+- Python 3.8+
+- 8GB+ RAM
+- 10GB+ free disk space
+- CUDA-compatible GPU (optional, for acceleration)
 
-# Setup system (run once)
+### 1. Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/b2210765027/Ragsim.git
+cd Ragsim
+
+# Install dependencies
+pip install -r requirements.txt
+
+# For GPU acceleration (optional)
+pip install onnxruntime-gpu
+pip install tensorflow[and-cuda]
+pip install torch torchvision torchaudio
+```
+
+### 2. Configuration
+
+Edit `config.py` to customize your setup:
+
+```python
+class RAGPipelineConfig:
+    # Set your document directory
+    DATA_PATH = r"C:\path\to\your\documents"
+    
+    # Choose embedding model
+    CURRENT_EMBEDDING_MODEL = EMBEDDING_MODELS["multilingual"]
+    
+    # Select LLM model
+    CURRENT_LLM = LLM_MODELS["llama3.2"]
+    
+    # Adjust processing parameters
+    CHUNK_SIZE = 800
+    CHUNK_OVERLAP = 400
+    DEFAULT_K = 8
+```
+
+### 3. System Setup
+
+```python
+from config import setup_rag_system, build_database, search
+
+# One-time setup (installs Ollama and downloads models)
 setup_rag_system()
 
-# Build database from your documents
+# Build document database
 build_database()
 
 # Start searching!
 search("What are the main requirements?")
 ```
 
-### 2. Configure Your Data Path
-```python
-from config import RAGPipelineConfig
+### 4. Web Interface
 
-# Edit the configuration
-RAGPipelineConfig.DATA_PATH = "/path/to/your/documents"
-RAGPipelineConfig.CHROMA_PATH = "your_vector_db"
+Launch the interactive web interface:
+
+```bash
+chainlit run app.py
 ```
 
-### 3. Advanced Usage
+Then open http://localhost:8000 in your browser.
+
+## 💻 Usage Examples
+
+### Command Line Usage
+
+```python
+from config import search, search_multiple_docs, show_documents
+
+# Basic search
+search("radar specifications")
+
+# Search in specific document
+search("CMDS nedir?", document="karsi-tedbir-salma-sistemi-ktss.pdf")
+
+# Search in directory
+search("Akrep Radar Projesi Gözden geçirme ekibi kimdir", directory="C:\path\to\your\documents")
+
+# Search multiple documents
+search_multiple_docs("performance metrics", "report1.pdf", "report2.docx")
+
+# View available documents
+show_documents()
+```
+
+### Web Interface Features
+
+1. **Search**: Natural language queries with instant results
+2. **Settings Panel**: Adjust all parameters without code changes
+3. **Database Management**: Update or rebuild database from UI
+4. **Source Display**: Click on source links to open original documents
+
+### Programmatic API
+
 ```python
 from config import RAGPipeline
 
-# Create pipeline with custom config
+# Create pipeline instance
 pipeline = RAGPipeline()
 
-# Search in specific document
-pipeline.search("radar specifications", document="specs.pdf")
-
-# Search in directory
-pipeline.search("test procedures", directory="/docs/testing")
-
-# Search multiple documents
-pipeline.search_multiple_docs("performance metrics", "doc1.pdf", "doc2.pdf")
-
-# Show available documents
-pipeline.show_available_documents()
-```
-
-## 🔧 Configuration
-
-### Model Configuration
-```python
-class RAGPipelineConfig:
-    # Embedding Models
-    EMBEDDING_MODELS = {
-        "multilingual": "intfloat/multilingual-e5-large",          # Best for Turkish + English
-        "english": "sentence-transformers/all-MiniLM-L6-v2",       # Faster, English-focused
-        "turkish": "emrecan/bert-base-turkish-cased-mean-nli-stsb-tr",  # Turkish-specific
-        "performance": "SMARTICT/multilingual-e5-large-wiki-tr-rag"     # Optimized for Turkish RAG
-    }
-    
-    # LLM Models
-    LLM_MODELS = {
-        "llama3.2": {"model": "llama3.2", "temp": 0.1},          
-        "qwen3:0.6B": {"model": "qwen3", "temp": 0.1},         
-        "nomic-embed-text": {"model": "nomic-embed-text", "temp": 0.1},               
-    }
-```
-
-### Processing Parameters
-```python
-# Text Chunking
-CHUNK_SIZE = 800        # Characters per chunk
-CHUNK_OVERLAP = 400     # Overlap between chunks
-
-# Search Parameters
-DEFAULT_K = 8           # Number of results to retrieve
-MAX_TOC_RESULTS = 1     # Maximum Table of Contents results
-
-# Feature Flags
-ENABLE_TOC_FILTERING = True      # Filter Table of Contents
-ENABLE_OCR = False               # OCR for scanned documents
-ENABLE_TABLE_EXTRACTION = True   # Extract tables from documents
-```
-
-## 📖 Usage Examples
-
-### Basic Search
-```python
-# Search everything
-search("What is the project scope?")
-
-# Search with more results
-search("technical specifications", k=10)
-```
-
-### Document-Specific Search
-```python
-# Search in one document
-search("system requirements", document="SRS.pdf")
-
-# Search in multiple documents
-search_multiple_docs("test cases", "test_plan.pdf", "test_procedures.docx")
-```
-
-### Directory-Based Search
-```python
-# Search in specific directory
-search("installation guide", directory="/docs/installation")
-
-# Search in document within directory
-search("API documentation", document="api.pdf", directory="/docs/technical")
-```
-
-### Database Management
-```python
-# Show what's in your database
-show_documents()
-
-# Update database with new files
-build_database()  # Smart update (recommended)
-
-# Force complete rebuild
-build_database(force_rebuild=True)
+# Advanced search with custom parameters
+pipeline.search("complex query", document="specific.pdf", k=10)
 
 # Get database statistics
-pipeline = RAGPipeline()
 stats = pipeline.get_database_stats()
+print(f"Total documents: {len(stats['files'])}")
 print(f"Total chunks: {stats['total_chunks']}")
+
+# Test filter configuration
+pipeline.test_filter(document="test.pdf")
 ```
 
-### Debugging and Testing
-```python
-# Validate system setup
-validate_setup()
+## 🔧 Configuration Options
 
-# Test document filtering
-pipeline = RAGPipeline()
-result = pipeline.test_filter(document="test.pdf", directory="/docs")
-print(result)
-```
+### Embedding Models
+
+| Model | Best For | Key Features |
+|-------|----------|--------------|
+| `multilingual` | Turkish + English docs | Best accuracy, slower |
+| `english` | English-only docs | Faster processing |
+| `turkish` | Turkish-only docs | Optimized for Turkish |
+| `performance` | Turkish RAG tasks | Balance of speed/accuracy |
+
+### LLM Models
+
+| Model | Description | Use Case |
+|-------|-------------|----------|
+| `llama3.2` | Default model | General purpose |
+| `qwen3` | Lightweight | Faster responses |
+| `turkish_mistral` | Turkish-optimized | Turkish content |
+
+### Processing Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `CHUNK_SIZE` | 800 | Characters per chunk |
+| `CHUNK_OVERLAP` | 400 | Overlap between chunks |
+| `DEFAULT_K` | 8 | Number of search results |
+| `ENABLE_TOC_FILTERING` | True | Filter table of contents |
+| `ENABLE_OCR` | False | Process scanned documents |
+| `ENABLE_TABLE_EXTRACTION` | True | Extract tables from docs |
 
 ## 🎯 Best Practices
 
-### 1. Document Organization
+### Document Organization
 ```
 documents/
 ├── specifications/
-│   ├── requirements.pdf
-│   └── technical_specs.docx
-├── procedures/
-│   ├── test_procedures.pdf
-│   └── installation_guide.md
-└── reports/
-    ├── analysis_report.pdf
-    └── performance_metrics.xlsx
+│   ├── technical_specs.pdf
+│   └── requirements.docx
+├── reports/
+│   ├── test_results.pdf
+│   └── analysis.xlsx
+└── documentation/
+    ├── user_manual.md
+    └── api_guide.html
 ```
 
-### 2. Search Query Optimization
+### Query Optimization
+- ✅ **Good**: "What are the radar system's functional requirements?"
+- ✅ **Good**: "List all test procedures for module X"
+- ❌ **Avoid**: Single words like "test" or "data"
+- ❌ **Avoid**: Overly broad queries like "tell me everything"
+
+### Performance Tuning
+
+**For Better Accuracy:**
 ```python
-# Good: Specific questions
-search("What are the functional requirements for the radar system?")
-
-# Good: Domain-specific terms
-search("API endpoints authentication methods")
-
-# Avoid: Too vague
-search("information")  # Too broad
-
-# Avoid: Single words
-search("test")  # Too generic
+CHUNK_SIZE = 1200
+CHUNK_OVERLAP = 600
+DEFAULT_K = 10
 ```
 
-### 3. Filter Usage
+**For Faster Processing:**
 ```python
-# Use document filter for specific files
-search("error codes", document="troubleshooting.pdf")
-
-# Use directory filter for related documents
-search("installation steps", directory="/docs/setup")
-
-# Combine for precise targeting
-search("API authentication", document="api.pdf", directory="/docs/technical")
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 200
+ENABLE_OCR = False
+EMBEDDING_DEVICE = 'cuda'  # If GPU available
 ```
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-#### 1. No Results Found
+| Issue | Solution |
+|-------|----------|
+| No search results | Check `DATA_PATH` in config.py, verify files exist |
+| Slow processing | Disable OCR, reduce chunk size, use GPU |
+| Ollama connection error | Run `setup_rag_system()` to reinstall |
+| Memory errors | Reduce `CHUNK_SIZE`, process fewer files at once |
+| Web UI not loading | Check Chainlit installation, verify port 8000 is free |
+
+### Validation Commands
+
 ```python
-# Check available documents
-show_documents()
+from config import validate_setup, show_config
 
-# Verify database has content
-pipeline = RAGPipeline()
-stats = pipeline.get_database_stats()
-print(f"Database has {stats['total_chunks']} chunks")
-
-# Test without filters
-search("your query")  # No document/directory filters
-```
-
-#### 2. Ollama Connection Issues
-```python
-# Check if Ollama is running
-setup_rag_system()  # Reinstalls and starts Ollama
-
-# Verify model is downloaded
-from rag_main_setup import SystemSetup
-SystemSetup.pull_llm_model("llama3.2")
-```
-
-#### 3. GPU Memory Issues
-```python
-# Switch to CPU for embeddings
-RAGPipelineConfig.EMBEDDING_DEVICE = 'cpu'
-
-# Use smaller embedding model
-RAGPipelineConfig.CURRENT_EMBEDDING_MODEL = RAGPipelineConfig.EMBEDDING_MODELS["english"]
-```
-
-#### 4. Database Corruption
-```python
-# Force rebuild database
-build_database(force_rebuild=True)
-
-# Or manually delete and rebuild
-import shutil
-shutil.rmtree("chroma")  # Delete database
-build_database()  # Rebuild from scratch
-```
-
-### Performance Optimization
-
-#### 1. Faster Processing
-```python
-# Disable OCR for faster processing
-RAGPipelineConfig.ENABLE_OCR = False
-
-# Use smaller chunks for faster search
-RAGPipelineConfig.CHUNK_SIZE = 500
-RAGPipelineConfig.CHUNK_OVERLAP = 200
-
-# Use English-only model if documents are English
-RAGPipelineConfig.CURRENT_EMBEDDING_MODEL = RAGPipelineConfig.EMBEDDING_MODELS["english"]
-```
-
-#### 2. Better Accuracy
-```python
-# Enable comprehensive logging for debugging
-RAGPipelineConfig.ENABLE_COMPREHENSIVE_LOGGING = True
-
-# Use larger context windows
-RAGPipelineConfig.CHUNK_SIZE = 1200
-RAGPipelineConfig.CHUNK_OVERLAP = 600
-
-# Increase search results
-search("your query", k=10)
-```
-
-## 🔄 Update Workflow
-
-### Regular Maintenance
-```python
-# Daily/Weekly: Update database
-build_database()  # Smart incremental update
-
-# Check database health
+# Check system health
 validate_setup()
 
-# Monitor database size
+# View current configuration
+show_config()
+
+# Test database
+from config import RAGPipeline
 pipeline = RAGPipeline()
 stats = pipeline.get_database_stats()
-print(f"Database: {stats['total_chunks']} chunks, {len(stats['files'])} files")
+print(f"Database contains {stats['total_chunks']} chunks")
+```
+
+## 📊 System Architecture
+
+```mermaid
+graph TD
+    A[Documents] --> B[Document Processor]
+    B --> C[Text Splitter]
+    C --> D[Embedding Generator]
+    D --> E[ChromaDB Vector Store]
+    F[User Query] --> G[Query Engine]
+    G --> E
+    E --> H[Semantic Search]
+    H --> I[Context Retrieval]
+    I --> J[LLM Response Generator]
+    J --> K[Formatted Response]
+```
+
+## 🔄 Update & Maintenance
+
+### Regular Updates
+```python
+# Daily/Weekly: Update with new documents
+update_database()  # Smart incremental update
+build_database()   # Initialize
+
+# Monthly: Validate system
+validate_setup()
+
+# As needed: Check statistics
+show_documents()
 ```
 
 ### Adding New Documents
-1. Place new documents in your `DATA_PATH`
-2. Run `build_database()` - it will automatically detect and process new files
-3. Old files that haven't changed won't be reprocessed
+1. Place documents in your `DATA_PATH` directory
+2. Run `build_database()` - only new/modified files are processed
+3. Start searching immediately
 
-### Removing Documents
-1. Delete documents from your `DATA_PATH`
-2. Run `build_database()` - it will automatically remove deleted files from database
+## 🚀 Demo Script
 
-## 📊 Monitoring and Analytics
+Try the interactive demo to explore all features:
 
-### Database Statistics
-```python
-pipeline = RAGPipeline()
-stats = pipeline.get_database_stats()
+```bash
+# Full interactive demo
+python demo.py
 
-print(f"Total documents: {len(stats['files'])}")
-print(f"Total chunks: {stats['total_chunks']}")
-print(f"Available directories: {len(stats['directories'])}")
+# Quick demo (no interaction)
+python demo.py --quick
+
+# Configuration demo
+python demo.py --config
 ```
-
-### Search Performance
-```python
-import time
-
-start_time = time.time()
-result = search("your query")
-end_time = time.time()
-
-print(f"Search completed in {end_time - start_time:.2f} seconds")
-```
-
-## 🤝 Contributing
-
-### Code Structure
-- **rag_document_processor.py**: Document loading, processing, and database management
-- **rag_query_engine.py**: Search functionality and response generation  
-- **rag_main_setup.py**: Main orchestration and user-friendly interfaces
-
-### Adding New Features
-1. Follow the existing class-based structure
-2. Add comprehensive docstrings
-3. Include error handling
-4. Update configuration classes as needed
-5. Add examples to README
-
-## 📝 License
-
-MIT License - feel free to use and modify for your projects.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the troubleshooting section above
-2. Verify your configuration matches the examples
-3. Test with the provided example documents first
-4. Check that all dependencies are properly installed
-
----
 
 ## 📈 Version History
 
-### v2.0.0 (Current)
-- Complete rewrite with professional architecture
+### v2.2.0 (Current)
+- Enhanced query engine with separate source/response returns
+- Improved UI integration with better error handling
+- Advanced source extraction for web interface
+
+### v2.1.0
+- Centralized configuration management
+- Fixed all LangChain deprecation warnings
+- Updated to latest package versions
+
+### v2.0.0
+- Complete architectural rewrite
 - Advanced document processing with Docling
 - Smart file change detection
-- Improved search filtering
-- Better error handling and logging
-- Comprehensive configuration system
 
-### v1.0.0 (Previous)
-- Basic RAG functionality
-- Simple document processing
-- ChromaDB integration
-- Basic search capabilities
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Follow the existing code structure
+4. Add tests for new features
+5. Submit a pull request
+
+## 📝 License
+
+MIT License - See LICENSE file for details
+
+## 🙏 Acknowledgments
+
+- Built with LangChain, ChromaDB, and Ollama
+- UI powered by Chainlit
+- Document processing via Docling
+
+## 📞 Support
+
+For issues or questions:
+1. Check the [Troubleshooting](#-troubleshooting) section
+2. Review `demo.py` for usage examples
+3. Run `validate_setup()` to diagnose issues
+4. Open an issue on GitHub
+5. Send an e-mail : oguzturksaid@gmail.com
+
+---
+
+**Made with ❤️ by Mustafa Said Oğuztürk**
+
+*For detailed technical documentation, see [TECHNICAL_DOCS.md](TECHNICAL_DOCS.md)*

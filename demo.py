@@ -13,7 +13,7 @@ Usage:
 
 Author: Mustafa Said Oğuztürk
 Date: 2025-08-01  
-Version: 2.1.0 - Centralized Configuration Demo
+Version: 2.1.0
 """
 
 import os
@@ -45,7 +45,7 @@ class RAGDemo:
         self.demo_queries = [
             "Akrep radar projesinden kapsamlıca bahseder misin?",
             "What is SRS?", 
-            "Akrep radar projesinin Test Konfigürasyon Şemalarını verir misin?",
+            "Test konfigürasyon şemalarını verir misin?",
             "What is the project scope?"
         ]
     

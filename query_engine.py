@@ -1,14 +1,13 @@
 """
-Professional RAG Pipeline - Query Engine Module (FIXED)
-=======================================================
+Professional RAG Pipeline - Enhanced Query Engine Module
+========================================================
 
-A comprehensive query engine for Retrieval-Augmented Generation (RAG) applications
-with advanced filtering, search optimization, and response generation.
-Now uses centralized configuration from config.py.
+Enhanced query engine with proper source return for UI integration.
+Supports source extraction and response separation for better UI display.
 
 Author: Mustafa Said Oğuztürk
 Date: 2025-08-01
-Version: 2.1.0 - Uses Centralized Configuration
+Version: 2.2.0 - Enhanced for UI Integration
 """
 
 import re
@@ -139,13 +138,13 @@ class DatabaseAnalyzer:
         """Display comprehensive database overview."""
         db_info = self.get_database_info()
         
-        print("🔍 Database Overview:")
-        print(f"  Total chunks: {db_info['total_chunks']}")
-        print(f"  Total files: {len(db_info['files'])}")
-        print(f"  Total directories: {len(db_info['directories'])}")
+        print("🔍 Database Durumu:")
+        print(f"  Toplam chunk sayısı: {db_info['total_chunks']}")
+        print(f"  Toplam dosya sayısı: {len(db_info['files'])}")
+        print(f"  Toplam dizin sayısı: {len(db_info['directories'])}")
         print()
         
-        print("📂 Available Directories:")
+        print("📂 Müsait dizinler:")
         for i, directory in enumerate(db_info['directories'], 1):
             files_in_dir = [f for f in db_info['files'] if f.startswith(directory)]
             print(f"  {i:2d}. {directory} ({len(files_in_dir)} files)")
@@ -154,7 +153,7 @@ class DatabaseAnalyzer:
         documents = [f.split('/')[-1] for f in db_info['files']]
         unique_documents = sorted(list(set(documents)))
         
-        print("📚 Available Documents:")
+        print("📚 Müsait Dokümanlar:")
         for i, doc in enumerate(unique_documents, 1):
             print(f"  {i:2d}. {doc}")
 
@@ -225,7 +224,7 @@ class ChromaDBFilterBuilder:
     def _create_chroma_filter(self, matching_paths: List[str]) -> Optional[Dict[str, Any]]:
         """Create ChromaDB filter from matching paths."""
         if not matching_paths:
-            return {"source": {"$eq": "NO_MATCHING_FILES_FOUND"}}
+            return {"source": {"$eq": "EŞLEŞEN DOSYA BULUNAMADI"}}
         elif len(matching_paths) == 1:
             return {"source": {"$eq": matching_paths[0]}}
         else:
@@ -234,18 +233,18 @@ class ChromaDBFilterBuilder:
     def test_filter_building(self, document: Optional[str] = None, 
                            directory: Optional[str] = None) -> Dict[str, Any]:
         """Test filter building for debugging purposes."""
-        print(f"🧪 Testing filter building:")
-        print(f"   Document: {document}")
-        print(f"   Directory: {directory}")
+        print(f"🧪 Filtreleme sistemi kontrol ediliyor:")
+        print(f"   Doküman: {document}")
+        print(f"   Dizin: {directory}")
         
         document_names = [document] if document else None
         filter_result = self.build_filter(document_names, directory)
         
-        print(f"   Generated filter: {filter_result}")
+        print(f"   Oluşturulan filtre: {filter_result}")
         
         # Show available files for reference
         db_info = self.database_analyzer.get_database_info()
-        print(f"\n📁 Available files ({len(db_info['files'])}):")
+        print(f"\n📁 Müsait Dosyalar ({len(db_info['files'])}):")
         for file in db_info['files'][:10]:  # Show first 10 files
             print(f"   {file}")
         if len(db_info['files']) > 10:
@@ -296,12 +295,12 @@ class ResponseGenerator:
             response: LLM response
             sources: List of source chunk IDs
         """
-        print("🧠 Response:")
+        print("🧠 Cevap:")
         print("=" * 50)
         content = response.content if hasattr(response, 'content') else str(response)
         print(content)
         print()
-        print("📚 Sources:")
+        print("📚 Kaynaklar:")
         for i, source in enumerate(sources, 1):
             print(f"  {i}. {source}")
 
@@ -340,9 +339,9 @@ class RAGQueryEngine:
     def search_documents(self, query: str, k: int = None,
                         document_names: Optional[List[str]] = None,
                         directory_path: Optional[str] = None,
-                        enable_toc_filter: bool = None) -> Tuple[str, Any]:
+                        enable_toc_filter: bool = None) -> Tuple[Union[List[str], str], Any]:
         """
-        Core search function with filtering and response generation.
+        🎯 ENHANCED CORE SEARCH FUNCTION - Returns sources and response separately for UI.
         
         Args:
             query: Search query
@@ -352,7 +351,7 @@ class RAGQueryEngine:
             enable_toc_filter: Whether to filter Table of Contents (uses config if None)
             
         Returns:
-            Tuple[str, Any]: Formatted response and raw LLM response
+            Tuple[Union[List[str], str], Any]: (sources_list_or_error_message, llm_response)
         """
         # Use config values if not provided
         k = k or self.config.DEFAULT_K
@@ -364,13 +363,17 @@ class RAGQueryEngine:
         
         # Perform search
         db = self.database_analyzer.db
-        if where_filter:
-            results = db.similarity_search_with_relevance_scores(query, k=k, filter=where_filter)
-        else:
-            results = db.similarity_search_with_relevance_scores(query, k=k)
+        try:
+            if where_filter:
+                results = db.similarity_search_with_relevance_scores(query, k=k, filter=where_filter)
+            else:
+                results = db.similarity_search_with_relevance_scores(query, k=k)
+        except Exception as e:
+            error_msg = f"Arama hatası: {str(e)}"
+            return error_msg, error_msg
         
         if not results:
-            no_results_msg = "No matching documents found."
+            no_results_msg = "Eşleşen sonuç bulunamadı. Daha spesifik olmayı deneyin"
             return no_results_msg, no_results_msg
         
         # Apply ToC filtering if enabled
@@ -378,14 +381,18 @@ class RAGQueryEngine:
             results = self.toc_filter.filter_toc_fast(results)
         
         if not results:
-            filtered_msg = "No documents match after filtering."
+            filtered_msg = "Filtreleme sonrası eşleşen dosya yok."
             return filtered_msg, filtered_msg
         
         # Generate response
         context_text = "\n\n - -\n\n".join([doc.page_content for doc, _score in results])
-        response = self.response_generator.generate_response(context_text, query)
+        try:
+            response = self.response_generator.generate_response(context_text, query)
+        except Exception as e:
+            error_msg = f"Yanıt üretimi hatası: {str(e)}"
+            return error_msg, error_msg
         
-        # Format sources
+        # Extract sources
         sources = [doc.metadata.get("id", "Unknown") for doc, _score in results]
         
         return sources, response
@@ -393,7 +400,7 @@ class RAGQueryEngine:
     def quick_search(self, query: str, document: Optional[str] = None, 
                     directory: Optional[str] = None, k: int = None) -> Any:
         """
-        🎯 MAIN SEARCH FUNCTION - Handles all filtering scenarios.
+        🎯 MAIN SEARCH FUNCTION - Handles all filtering scenarios (Legacy support).
         
         Args:
             query: Search query
@@ -402,7 +409,7 @@ class RAGQueryEngine:
             k: Number of results to retrieve (uses config default if None)
             
         Returns:
-            LLM response
+            LLM response (for backward compatibility)
         """
         document_names = [document] if document else None
         sources, response = self.search_documents(
@@ -412,7 +419,7 @@ class RAGQueryEngine:
             k=k
         )
         
-        # Display results
+        # Display results (legacy behavior)
         if isinstance(sources, str):  # Error message
             print(f"❌ {sources}")
             return response
@@ -422,7 +429,7 @@ class RAGQueryEngine:
     
     def search_multiple_documents(self, query: str, *document_names: str, k: int = None) -> Any:
         """
-        🎯 SEARCH IN MULTIPLE DOCUMENTS.
+        🎯 SEARCH IN MULTIPLE DOCUMENTS (Legacy support).
         
         Args:
             query: Search query
@@ -430,7 +437,7 @@ class RAGQueryEngine:
             k: Number of results to retrieve (uses config default if None)
             
         Returns:
-            LLM response
+            LLM response (for backward compatibility)
         """
         if not document_names:
             return self.quick_search(query, k=k)
@@ -441,7 +448,7 @@ class RAGQueryEngine:
             k=k
         )
         
-        # Display results
+        # Display results (legacy behavior)
         if isinstance(sources, str):  # Error message
             print(f"❌ {sources}")
             return response
@@ -520,15 +527,19 @@ def test_filter(document: Optional[str] = None, directory: Optional[str] = None)
 
 if __name__ == "__main__":
     # Example usage with centralized configuration
-    print("🚀 RAG Query Engine Ready! (Using Centralized Config)")
-    print("\n🔧 Current Configuration:")
+    print("🚀 RAG Query Engine Hazır! - Enhanced Version")
+    print("\n🔧 Kullanılan Konfigürasyon:")
     config = RAGPipelineConfig()
     config.print_config()
     
-    print("\n📖 Usage Examples:")
+    print("\n📖 Kullanım Örnekleri:")
     print("1. quick_search('What is radar testing?')")
     print("2. quick_search('system requirements', document='SRS.pdf')")
     print("3. quick_search('test procedures', directory='/kaggle/input/tests')")
     print("4. search_multiple_docs('performance metrics', 'doc1.pdf', 'doc2.docx')")
     print("5. show_database_info()")
+    print("\n✨ Enhanced Features:")
+    print("- search_documents() now returns (sources, response) tuple for UI integration")
+    print("- Better error handling and source extraction")
+    print("- Full backward compatibility with existing functions")
     print("\n💡 All settings are managed from config.py - no more duplicate configuration!")

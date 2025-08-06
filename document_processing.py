@@ -1,14 +1,13 @@
 """
-Professional RAG Pipeline - Document Processing Module (FIXED)
+Professional RAG Pipeline - Document Processing Module
 ==============================================================
 
-A comprehensive document processing and vector database management system
-for Retrieval-Augmented Generation (RAG) applications.
-Now uses centralized configuration from config.py.
+Retrieval-Augmented Generation (RAG) uygulamaları için kapsamlı bir
+belge işleme ve vektör veritabanı yönetim sistemi.
 
 Author: Mustafa Said Oğuztürk
 Date: 2025-08-01
-Version: 2.1.0 - Uses Centralized Configuration
+Version: 2.1.0
 """
 
 import os
@@ -40,8 +39,8 @@ try:
     from docling.datamodel.base_models import InputFormat
     DOCLING_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Docling import failed: {e}")
-    print("Falling back to basic document loading...")
+    print(f"Uyarı: Docling yüklemesi başarısız oldu {e}")
+    print("Temel dosya yükleme sistemine geri dönülüyor...")
     DOCLING_AVAILABLE = False
 
 # Configuration
@@ -61,11 +60,11 @@ class DocumentConverter:
                 self.pipeline_options = self._setup_pipeline_options()
                 self.doc_converter = self._create_converter_v2()
             except Exception as e:
-                print(f"Warning: Advanced docling setup failed: {e}")
-                print("Falling back to basic docling converter...")
+                print(f"Uyarı: Docling çalıştırması başarısız oldu: {e}")
+                print("Temel dosya yükleme sistemine geri dönülüyor...")
                 self.doc_converter = self._create_converter_basic()
         else:
-            print("Using basic document loading (docling not available)")
+            print("Temel dosya yükleme sistemi kullanılıyor (docling not available)")
             self.doc_converter = None
     
     def _setup_pipeline_options(self) -> 'PdfPipelineOptions':
@@ -78,7 +77,7 @@ class DocumentConverter:
                 pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
             return pipeline_options
         except Exception as e:
-            print(f"Warning: Could not setup pipeline options: {e}")
+            print(f"UYARI: Kurulum ayarları tamamlanamadı: {e}")
             return None
     
     def _create_converter_v2(self) -> 'DoclingDocumentConverter':
@@ -106,7 +105,7 @@ class DocumentConverter:
             loader = DoclingLoader(file_path=str(file_path), converter=self.doc_converter)
             return loader.load()
         except Exception as e:
-            print(f"Error loading file {file_path} with docling: {e}")
+            print(f"Bu dosya {file_path} docling ile yüklenemedi!: {e}")
             return self._load_document_basic(file_path)
     
     def _load_document_basic(self, file_path: str) -> List[Document]:
@@ -118,10 +117,10 @@ class DocumentConverter:
                     content = f.read()
                 return [Document(page_content=content, metadata={"source": file_path})]
             else:
-                print(f"Warning: Cannot process {file_path} without docling support")
+                print(f"UYARI: Bu dosya {file_path} docling kullanılmadan yüklenemedi!")
                 return []
         except Exception as e:
-            print(f"Error in basic loading for {file_path}: {e}")
+            print(f"Temel dosya kurulum methoduna dönülüyor: {file_path}: {e}")
             return []
 
 
@@ -488,11 +487,11 @@ class RAGDocumentProcessor:
         self.file_manager = FileManager(self.config)
         self.database_manager = DatabaseManager(self.chroma_path, self.embeddings, self.config)
         
-        print(f"📁 Data path: {self.data_path}")
-        print(f"💾 Chroma path: {self.chroma_path}")
+        print(f"📁 Veri Yolu: {self.data_path}")
+        print(f"💾 Chroma Database yolu: {self.chroma_path}")
         
         if self.config.ENABLE_COMPREHENSIVE_LOGGING:
-            print("🔧 Configuration used:")
+            print("🔧 Kullanılan konfigürasyonlar:")
             self.config.print_config()
     
     def _initialize_embeddings(self):
@@ -510,13 +509,13 @@ class RAGDocumentProcessor:
         # Load documents
         documents = self.document_converter.load_document(file_path)
         if not documents:
-            print(f"    ERROR: Could not load file")
+            print(f"    HATA: Dosya yüklenemedi")
             return []
         
         # Split into chunks
         chunks = self.chunk_processor.split_documents(documents)
         if not chunks:
-            print(f"    ERROR: No chunks generated")
+            print(f"    HATA: Chunk yaratılamadı")
             return []
         
         # Add file metadata to chunks
@@ -529,7 +528,7 @@ class RAGDocumentProcessor:
         # Assign chunk IDs and filter ToC (uses config settings)
         processed_chunks = self.chunk_processor.assign_chunk_ids(chunks)
         
-        print(f"    Generated {len(processed_chunks)} chunks")
+        print(f"     {len(processed_chunks)} chunk yaratıldı")
         return processed_chunks
     
     def update_database(self, comprehensive_toc_filter: bool = None) -> Dict[str, int]:
@@ -546,15 +545,15 @@ class RAGDocumentProcessor:
         if comprehensive_toc_filter is None:
             comprehensive_toc_filter = self.config.ENABLE_TOC_FILTERING
             
-        print(f"🔄 Updating database from: {self.data_path}")
-        print(f"📋 Comprehensive ToC filtering: {comprehensive_toc_filter}")
+        print(f"🔄 Database şu dizinden güncelleniyor: {self.data_path}")
+        print(f"📋 İÇİNDEKİLER tablo filtrelemesi: {comprehensive_toc_filter}")
         
         # Get current state
         current_files = self.file_manager.get_supported_files(self.data_path)
         db_files = self.database_manager.get_files_in_database()
         
-        print(f"📁 Files in filesystem: {len(current_files)}")
-        print(f"💾 Files in database: {len(db_files)}")
+        print(f"📁  Dosya sistemindeki dosya sayısı: {len(current_files)}")
+        print(f"💾 Database de bulunan dosya sayı: {len(db_files)}")
         
         if not current_files:
             print("⚠️ No supported files found in data directory!")
@@ -571,22 +570,22 @@ class RAGDocumentProcessor:
         }
         
         # Handle deleted files
-        print(f"\n🗑️ Checking for deleted files...")
+        print(f"\n🗑️ Silinen dosyalar kontrol ediliyor...")
         for db_file in db_files.keys():
             if db_file not in current_files:
-                print(f"    DELETING: {os.path.basename(db_file)} (file no longer exists)")
+                print(f"    SİLİNİYOR: {os.path.basename(db_file)} (varolmayan dosya)")
                 deleted_count = self.database_manager.delete_file_from_database(db_file)
                 stats["deleted_files"] += 1
                 stats["total_chunks_deleted"] += deleted_count
         
         # Handle new and modified files
-        print(f"\n📁 Processing files for changes...")
+        print(f"\n📁 Dosyalardaki değişiklikler düzenleniyor...")
         for file_path, file_info in current_files.items():
             relative_path = os.path.relpath(file_path, self.data_path)
             file_hash = file_info["hash"]
             
             if file_hash is None:
-                print(f"    SKIPPING: {relative_path} (couldn't calculate hash)")
+                print(f"    ATLANDI: {relative_path} (hash değeri hesaplanamadı)")
                 continue
             
             process_file = False
@@ -601,10 +600,10 @@ class RAGDocumentProcessor:
                     stats["modified_files"] += 1
                     process_file = True
                 else:
-                    print(f"    UNCHANGED: {relative_path}")
+                    print(f"    DEĞİŞMEDİ: {relative_path}")
                     stats["unchanged_files"] += 1
             else:
-                print(f"    NEW: {relative_path}")
+                print(f"    YENİ: {relative_path}")
                 stats["new_files"] += 1
                 process_file = True
             
@@ -615,9 +614,9 @@ class RAGDocumentProcessor:
                     success = self.database_manager.add_documents_to_database(processed_chunks)
                     if success:
                         stats["total_chunks_added"] += len(processed_chunks)
-                        print(f"    ADDED: {len(processed_chunks)} chunks")
+                        print(f"    EKLENDİ: {len(processed_chunks)} chunk")
                     else:
-                        print(f"    ERROR: Failed to add chunks to database")
+                        print(f"    HATA: database chunk eklenmesi başarısız oldu")
         
         # Print summary
         self._print_update_summary(stats)
@@ -629,14 +628,14 @@ class RAGDocumentProcessor:
         if comprehensive_toc_filter is None:
             comprehensive_toc_filter = self.config.ENABLE_TOC_FILTERING
             
-        print(f"🏗️ Building initial database from: {self.data_path}")
-        print(f"📋 Comprehensive ToC filtering: {comprehensive_toc_filter}")
+        print(f"🏗️ Database temelinden oluşturuluyor: {self.data_path}")
+        print(f"📋 İçindekiler tablo filtresi: {comprehensive_toc_filter}")
         
         files_info = self.file_manager.get_supported_files(self.data_path)
-        print(f"📁 Found {len(files_info)} supported files")
+        print(f"📁 {len(files_info)} desteklenen dosya bulundu")
         
         if not files_info:
-            print("⚠️ No supported files found! Please check your data directory.")
+            print("⚠️ Desteklenen dosya bulunamadı! Lütfen veri yolunu kontrol ediniz.")
             return
         
         total_chunks = 0
@@ -656,14 +655,14 @@ class RAGDocumentProcessor:
                 if success:
                     processed_files += 1
                     total_chunks += len(processed_chunks)
-                    print(f"    SUCCESS: Added {len(processed_chunks)} chunks")
+                    print(f"    BAŞARILI: {len(processed_chunks)} chunk eklendi")
                 else:
-                    print(f"    ERROR: Failed to add chunks to database")
+                    print(f"    HATA: Database'e chunk eklenirken bir hata oluştu")
         
         print(f"\n" + "="*60)
-        print(f"🎉 INITIAL BUILD COMPLETE:")
-        print(f"    Files processed: {processed_files}")
-        print(f"    Total chunks added: {total_chunks}")
+        print(f"🎉 İLK OLUŞTURMA TAMAMLANDI:")
+        print(f"    İşlenen dosya sayısı: {processed_files}")
+        print(f"    Eklenen chunk sayısı: {total_chunks}")
         print(f"="*60)
     
     def _print_update_summary(self, stats: Dict[str, int]) -> None:
@@ -679,14 +678,14 @@ class RAGDocumentProcessor:
             final_count = "Unknown"
         
         print(f"\n" + "="*60)
-        print(f"📊 UPDATE SUMMARY:")
-        print(f"    New files: {stats['new_files']}")
-        print(f"    Modified files: {stats['modified_files']}")
-        print(f"    Deleted files: {stats['deleted_files']}")
-        print(f"    Unchanged files: {stats['unchanged_files']}")
-        print(f"    Total chunks added: {stats['total_chunks_added']}")
-        print(f"    Total chunks deleted: {stats['total_chunks_deleted']}")
-        print(f"    Final database size: {final_count} chunks")
+        print(f"📊 Güncelleme Özeti:")
+        print(f"    Yeni dosya sayısı: {stats['new_files']}")
+        print(f"    Değişen dosya sayısı: {stats['modified_files']}")
+        print(f"    Silinen dosya sayısı: {stats['deleted_files']}")
+        print(f"    Değişmeyen dosya sayısı: {stats['unchanged_files']}")
+        print(f"    Eklenen toplam chunk sayısı: {stats['total_chunks_added']}")
+        print(f"    Silinenen toplam chunk sayısı: {stats['total_chunks_deleted']}")
+        print(f"    Son Database Boyutu: {final_count} chunks")
         print(f"="*60)
 
 
@@ -711,15 +710,15 @@ def main_build_initial_database(data_path: str = None, chroma_path: str = None, 
 
 if __name__ == "__main__":
     # Example usage with centralized configuration
-    print("🚀 Starting RAG Document Processing Pipeline...")
-    print("🔧 Using Centralized Configuration from config.py")
+    print("🚀 RAG Dosya işleme sistemi başlıyor...")
+    print("🔧 Konfigürasyon dosyası : config.py")
     
     # Show current configuration
     config = RAGPipelineConfig()
     config.print_config()
     
     # For regular updates (recommended for existing databases)
-    print("\n📄 Running database update...")
+    print("\n📄 DATABASE güncellemesi başlıyor...")
     main_update_database()
     
     # For initial database creation (uncomment if building from scratch)

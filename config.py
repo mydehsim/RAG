@@ -51,8 +51,8 @@ class RAGPipelineConfig:
     # LLM Model Options:
     LLM_MODELS = {
         "llama3.2": {"model": "llama3.2", "temp": 0.1},                               # Default, good balance
-        "qwen3": {"model": "qwen3", "temp": 0.1},                                     # Alternative
-        "nomic-embed-text": {"model": "nomic-embed-text", "temp": 0.1},               # Fallback option
+        "qwen3": {"model": "qwen3:0.6b", "temp": 0.1},                                     # Alternative
+        "turkish_mistral": {"model": "brooqs/mistral-turkish-v2:latest", "temp": 0.1},               # Fallback option
     }
     CURRENT_LLM = LLM_MODELS["llama3.2"]  # 👈 Change this to switch LLM models
     
@@ -211,7 +211,7 @@ class SystemSetup:
         except Exception as e:
             print(f"❌ Error starting Ollama server: {e}")
             return None
-    
+
     @staticmethod
     def pull_llm_model(model_name: str = None) -> bool:
         """Pull LLM model if not already available."""
