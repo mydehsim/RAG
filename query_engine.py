@@ -7,7 +7,7 @@ Supports source extraction and response separation for better UI display.
 
 Author: Mustafa Said Oğuztürk
 Date: 2025-08-01
-Version: 2.2.0 - Enhanced for UI Integration
+Version: 2.2.0
 """
 
 import re
